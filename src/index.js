@@ -7,7 +7,7 @@ import TableData from './components/TableData/TableData'
 import { Provider } from 'react-redux';
 import store from './redux/store';
 import { createMuiTheme, ThemeProvider } from "@material-ui/core";
-import { Route, Router, Switch } from 'react-router-dom';
+import { BrowserRouter, Route, Switch } from 'react-router-dom';
 import { createBrowserHistory } from "history";
 
 const theme = createMuiTheme({
@@ -26,14 +26,14 @@ const history = createBrowserHistory();
 ReactDOM.render(
 	<ThemeProvider theme={theme}>
 		<Provider store={store}>
-			<Router history={history}>
+			<BrowserRouter history={history}  basename="/OrderToDo">
 					<Switch>
 						<Route exact path="/" component={App} />
 						<Route path="/table" component={TableData} />
 						<Route path="/form" component={Form} />
 						<Route path="/*" component={() => 'NOT FOUND'} />
 					</Switch>
-			</Router>
+			</BrowserRouter>
 		</Provider>
 	</ThemeProvider>,
   document.getElementById('root')
