@@ -1,7 +1,16 @@
-.Order {
-	width: 50%;
-	border-left: 1px solid #000000;
-	span, h2, h3 {
-		padding-right: 15px;
-	}
+.order-container {
+	margin-right: 20px;
+}
+
+.order-content {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	padding: 5px 0;
+}
+
+.icon {
+	position: absolute;
+	top: 10px;
+	right: 10px;
 }

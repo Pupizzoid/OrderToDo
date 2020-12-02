@@ -56,4 +56,5 @@ export const FORM_CONFIG = {
 	formTitle: '',
 	status: true,
 	formSubmitAction: null,
+	typeAction: 'modify'
 }

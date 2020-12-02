@@ -1,14 +1,21 @@
-import React, { Fragment, useState} from 'react';
+import React, { useState } from 'react';
 import './App.scss';
 import List from './components/List/List';
+import AddIcon from '@material-ui/icons/Add';
+import EditIcon from '@material-ui/icons/Edit';
+import GetAppIcon from '@material-ui/icons/GetApp';
 import Form from './components/Form/Form';
-import Box from '@material-ui/core/Box';
 import { makeStyles } from '@material-ui/core/styles';
-import Button from '@material-ui/core/Button';
-import ButtonGroup from '@material-ui/core/ButtonGroup';
-import Typography from '@material-ui/core/Typography';
-import TextField from '@material-ui/core/TextField';
 import { connect } from 'react-redux';
+import {
+	Box,
+	Button,
+	ButtonGroup,
+	TextField,
+	Fab,
+	AppBar,
+	Toolbar
+} from '@material-ui/core/';
 import {
 	openFormAction,
 	startFormAction,
@@ -19,68 +26,36 @@ import {
 	resetFilterAction,
 	changeSortOrdersAction
 } from './redux/actions';
+import { Link, useHistory } from 'react-router-dom';
 
-const useStyles = makeStyles({
-	root: {
-		padding: 20,
-		display: 'flex',
-		flexWrap: 'wrap'
-	},
-	nav: {
-		width: '80%',
-		margin: 'auto',
-		marginBottom: 30
-	},
-	navItem: {
-		display: 'flex',
-		padding: 10,
-		alignContent: 'center',
-		justifyContent: 'space-between'
-	},
-	btn: {
-		marginRight: 30,
-		minWidth: 100
-	},
-	filterCategoryTitle: {
-		marginRight: 15
-	},
-	filterSection: {
+const useStyles = makeStyles((theme) => ({
+	fab: {
+    position: 'fixed',
+    bottom: theme.spacing(2),
+		right: theme.spacing(2),
+		zIndex: 2
+  }
+}));
 
-	}
-});
-
-
-/*
-
-	jump()
-
-	walk()
-
-
-
-	moveStrategy();
-
-	moveStrategy = walk;
-
-	moveStrategy()
-
-	setStrategy('JUMP') {
-		moveStrategy = jump;
-	}
-
-	a.sort(jump)
-
-	a.sort(walk)
-
-	comparator = (a, b) => 0
-	a.sort((a, b) => 0)
- */
-
-const App = ({ openForm, app, addOrder, startForm, form, openDepositForm, updateDeposit, orders, changeFilter, resetFilter, changeSortOrders }) => {
-	const { isOpenForm, isFormDepositOpen, depositValue, sort, filter } = app;
+const App = (props) => {
+	const {
+		app,
+		addOrder,
+		startForm,
+		form,
+		openDepositForm,
+		updateDeposit,
+		orders,
+		changeFilter,
+		resetFilter,
+		changeSortOrders
+	} = props;
+	const { isOpenForm, isFormDepositOpen, depositValue, sortName, filter } = app;
 	const { formData } = form;
 	const [initialDepositValue, setDepositValue] = useState(depositValue);
+	const [searchValue, setSearchValue] = useState('');
 	const classes = useStyles();
+	const history = useHistory();
 
 	const handleCreateOrder = (formData) => {
 		const {
@@ -105,7 +80,8 @@ const App = ({ openForm, app, addOrder, startForm, form, openDepositForm, update
 				description,
 				status,
 				time
-			}]
+			}],
+			logsForExcel: []
 		})
 	}
 
@@ -116,9 +92,10 @@ const App = ({ openForm, app, addOrder, startForm, form, openDepositForm, update
 			data,
 			{
 				formTitle: 'Create Pending Order',
-				formSubmitAction: handleCreateOrder
+				formSubmitAction: handleCreateOrder,
+				typeAction: 'create'
 			});
-		openForm();
+		history.push('/form');
 	}
 
 	const handleSubmit = (e) => {
@@ -135,7 +112,6 @@ const App = ({ openForm, app, addOrder, startForm, form, openDepositForm, update
 			const filterResult = (filter.running && (order.status === 'active' || order.status === 'pending')) ||
 				(filter.finished && (order.status === 'Hit TP' || order.status === 'Hit SL' || order.status === 'cancel')) ||
 				(filter.wins && order.result > 0) || (filter.loses && order.result < 0);
-			console.log(order, filter, filterResult);
 			return filterResult
 		});
 		return filteredList
@@ -144,122 +120,168 @@ const App = ({ openForm, app, addOrder, startForm, form, openDepositForm, update
 	const createFullDate = (d, t) => {
 		const time = t.split(':');
 		const date = d.split('-');
-		console.log(d, t);
-		return new Date(date[0], date[1] - 1, date[2], time[0], time[1]).getMilliseconds();
+		return new Date(date[0], date[1] - 1, date[2], time[0], time[1]).getTime();
 	}
 
 	const titleSortStrategy = (a, b) => {
-		console.log(a, b);
-		return a.title.toLocaleString() > b.title.toLocaleString()
+		return a.title.toLocaleString() > b.title.toLocaleString() ? 1 : -1
 	}
 
-	const someOtherSortStrategy = (a, b) => {
-		console.log(a, b);
-		const result = createFullDate(a.date, a.time) > createFullDate(b.date, b.time);
-		console.log(result);
+	const latestSortStrategy = (a, b) => {
+		const result = createFullDate(a.date, a.time) - createFullDate(b.date, b.time);
 		return result;
 	}
 
-	const setSortStrategy = (strategyName) => {
-		switch (strategyName) {
-			case 'OTHER':
-				sortStrategy = someOtherSortStrategy;
-				return;
+	const newestSortStrategy = (a, b) => {
+		const result = createFullDate(b.date, b.time) - createFullDate(a.date, a.time);
+		return result;
+	}
+
+	const statusSortStrategy = (a, b) => {
+		const priorityStatus = {
+			pending: 1,
+			active: 2,
+			HitTP: 3,
+			HitSL: 4,
+			cancel: 5
+		}
+		const newA = a.status.replace(' ', '');
+		const newB = b.status.replace(' ', '');
+		return priorityStatus[newA] - priorityStatus[newB];
+	}
+ 
+	const applySort = (data) => {
+		switch (sortName) {
+			case 'LATEST':
+				data.sort(latestSortStrategy);
+				return data;
+			case 'NEWEST':
+				data.sort(newestSortStrategy);
+				return data;
+			case 'STATUS':
+				data.sort(statusSortStrategy);
+				return data;
 			default:
-				sortStrategy = titleSortStrategy
+				data.sort(titleSortStrategy);
+				return data;
 		}
 	}
 
-	let sortStrategy = setSortStrategy;
- 
-	const applySort = (data) => {
-
-		return data.sort(titleSortStrategy);
+	const handleSearch = () => {
+		return orders.dataOrder.filter(order => order.title.toLowerCase().includes(searchValue) ||
+			order.description.toLowerCase().includes(searchValue));
 	}
-	
-  return (
-		<Box className={classes.root}>
-			<Box className={classes.nav}>
-				<Box className={classes.navItem}>
-					<Button className={classes.btn} variant="contained" color="primary" onClick={() => onOpenFormClick(formData)}>
-						Create
-					</Button>
-					<Box className={classes.filterSection}>
-						<Typography className={classes.filterCategoryTitle} color="textSecondary" variant="body1" component="span">
-							Show:
-						</Typography>
-						<ButtonGroup color="primary" aria-label="outlined primary button group">
-							<Button
-								variant={filter.all ? "contained" : null}
-								onClick={() => resetFilter()}
-							>All</Button>
-							<Button
-								variant={filter.running ? "contained" : null}
-								onClick= {() => changeFilter('running')}
-							>Running</Button>
-							<Button
-								variant={filter.finished ? "contained" : null}
-								onClick= {() => changeFilter('finished')}
-							>Finished</Button>
-							<Button
-								variant={filter.wins ? "contained" : null}
-								onClick= {() => changeFilter('wins')}
-							>Wins</Button>
-							<Button
-								variant={filter.loses ? "contained" : null}
-								onClick= {() => changeFilter('loses')}
-							>Loses</Button>
-						</ButtonGroup>
-					</Box>
-					<Box>
+
+	return (
+		<div className='container'>
+			<Fab
+				color="secondary"
+				aria-label="add"
+				className={classes.fab}
+				onClick={() => onOpenFormClick(formData)}>
+				<AddIcon />
+			</Fab>
+			<AppBar position="static" className='header'>
+				<Toolbar className='nav'>
+					<div className='balance-content'>
+						<span>Balance:&nbsp;</span>
+						<span className='balance-value'>{depositValue}&#8364;</span>
+						{!isFormDepositOpen ?
+					<EditIcon
+						onClick={() => openDepositForm()} /> :
+					<form onSubmit={handleSubmit} className='balance-form'>
 						<TextField
-							id="search"
-							label="Search"
-						/>
-						<Button variant="contained" color="primary" >Search</Button>
+							id="Deposit"
+							required
+							defaultValue={ depositValue }
+							onChange={e => setDepositValue(e.target.value)}
+						label="Amount" />
+						<Button
+							variant="contained"
+							color="primary"
+							type="submit"
+						>Set</Button>
+					</form>
+				}
+					</div>
+					<h1 className='title'>Trading Journal</h1>
+					<TextField
+						id="search"
+						label="Search"
+						defaultValue={searchValue}
+						className={classes.navItem}
+						onChange={e => setSearchValue(e.target.value)}
+					/>
+					<Box>
+						<Link
+							to='/table' className='download-link'>
+							<GetAppIcon />
+						</Link>
 					</Box>
-				</Box>
-				<Box className={classes.navItem}>
-					{!isFormDepositOpen ?
-						<Button className={classes.btn} variant="contained" color="primary" onClick={() => openDepositForm()}>Deposit</Button> :
-						<form onSubmit={handleSubmit}>
-							<TextField
-								id="Deposit"
-								required
-								// className={classes.TextField}
-								defaultValue={initialDepositValue}
-								onChange={e => setDepositValue(e.target.value)}
-								label="Amount" />
-							<Button
-								variant="contained"
-								color="primary"
-								type="submit"
-							>Deposit</Button>
-						</form>
-					}
-					<Box className={classes.filterSection}>
-						<Typography className={classes.filterCategoryTitle} color="textSecondary" variant="body1" component="span">
-							Sort: 
-						</Typography>
-						<ButtonGroup color="primary" aria-label="outlined primary button group">
-							<Button onClick={() => changeSortOrders('TITLE')}>Title</Button>
-							<Button onClick={() => changeSortOrders('DATE')}>Latest</Button>
-							<Button onClick={() => changeSortOrders('TITLE')}>Newest</Button>
-							<Button onClick={() => changeSortOrders('TITLE')}>Status</Button>
-						</ButtonGroup>
-					</Box>
-					<Typography color="textSecondary" variant="body1" component="span">
-						Balance: {depositValue}&#8364;
-					</Typography>
-				</Box>
-			</Box>
-			{!isOpenForm ?
-				<Fragment>
-					<List orders={Object.assign({}, {dataOrder: applySort(filterData(orders.dataOrder)), activeOrder: orders.activeOrder})} />
-				</Fragment> :
-				<Form />
-			}
-    </Box>
+				</Toolbar>
+			</AppBar>
+			<div className='filter-content'>
+				<ButtonGroup
+					color="primary"
+					aria-label="outlined primary button group"
+				>
+						<Button
+							variant={filter.all ? "contained" : null}
+							onClick={() => resetFilter()}
+						>All</Button>
+						<Button
+							variant={filter.running ? "contained" : null}
+							onClick= {() => changeFilter('running')}
+						>Running</Button>
+						<Button
+							variant={filter.finished ? "contained" : null}
+							onClick= {() => changeFilter('finished')}
+						>Finished</Button>
+						<Button
+							variant={filter.wins ? "contained" : null}
+							onClick= {() => changeFilter('wins')}
+						>Wins</Button>
+						<Button
+							variant={filter.loses ? "contained" : null}
+							onClick= {() => changeFilter('loses')}
+						>Loses</Button>
+				</ButtonGroup>
+				<ButtonGroup
+					color="primary"
+					aria-label="outlined primary button group"
+				>
+						<Button
+							variant={sortName === 'TITLE' ? "contained" : null}
+							onClick={() => changeSortOrders('TITLE')}
+						>Title</Button>
+						<Button
+							variant={sortName === 'LATEST' ? "contained" : null}
+							onClick={() => changeSortOrders('LATEST')}
+						>Latest</Button>
+						<Button
+							variant={sortName === 'NEWEST'? "contained" : null}
+							onClick={() => changeSortOrders('NEWEST')}
+						>Newest</Button>
+						<Button
+							variant={sortName === 'STATUS'? "contained" : null}
+							onClick={() => changeSortOrders('STATUS')}
+						>Status</Button>
+					</ButtonGroup>
+			</div>
+				{
+					
+				(!isOpenForm ?
+						<List
+							orders={
+								Object.assign({},
+									{
+										dataOrder: applySort(filterData(handleSearch(orders.dataOrder))),
+										activeOrder: orders.activeOrder
+									})} />:
+					<Form />
+				)
+				}
+			</div>
   );
 }
 

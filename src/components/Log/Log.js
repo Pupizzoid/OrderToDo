@@ -1,14 +1,25 @@
 import React from 'react';
 import Box from '@material-ui/core/Box';
 import Typography from '@material-ui/core/Typography';
+import Accordion from '@material-ui/core/Accordion';
+import AccordionSummary from '@material-ui/core/AccordionSummary';
+import AccordionDetails from '@material-ui/core/AccordionDetails';
+import Icon from '@material-ui/core/Icon';
 import { makeStyles } from '@material-ui/core/styles';
 
 const useStyles = makeStyles({
 	root: {
-		width: '100%'
+		width: '100%',
+		padding: 0
 	},
 	content: {
+		width: '100%',
 		display: 'flex',
+		justifyContent: 'space-between',
+	},
+	contentInfo: {
+		display: 'flex',
+		flexWrap: 'wrap',
 		justifyContent: 'space-between'
 	}
 });
@@ -17,56 +28,32 @@ const Log = (logData) => {
 	const { date, time, posAmount, posLevel, stopLoss, takeProfit, description, status, result } = logData;
 	const classes = useStyles();
 	return (
-		<Box className={classes.root}>
-			<Box className={classes.content}>
-				<Typography color="textSecondary" variant="body1" component="span">
-					{status}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					{date}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					{time}
-				</Typography>
-			</Box>
-			<Box className={classes.content}>
-				{posAmount ?
-					<Typography color="textSecondary" variant="body1" component="span">
-						size:{posAmount}
-					</Typography> :
-					null}
-				{posLevel ?
-					<Typography color="textSecondary" variant="body1" component="span">
-						PL:{posLevel}
-					</Typography> :
-					null}
-				{stopLoss ?
-					<Typography color="textSecondary" variant="body1" component="span">
-						SL:{stopLoss}
-					</Typography> :
-					null}
-				{takeProfit ?
-					<Typography color="textSecondary" variant="body1" component="span">
-						TP:{takeProfit}
-					</Typography> :
-					null}
-			</Box>
-			{result ?
-				<Box className={classes.content}>
-					<Typography color="textSecondary" variant="body1" component="span">
-					result:{result}
-					</Typography>
-				</Box> :
-					null}
+		<Accordion className={classes.root}>
+			<AccordionSummary
+				expandIcon={<Icon aria-label="keyboard_arrow_down">keyboard_arrow_down</Icon>}
+			>
+				<span>{status}</span>
+			</AccordionSummary>
+			<AccordionDetails className={classes.contentInfo}>
+				<div className={classes.content}>
+					<span>{date}</span>
+					<span>{time}</span>
+				</div>
+			<div className={classes.content}>
+				{ posAmount ? <span><span>size: </span>{posAmount}</span> : null }
+				{posLevel ? <span><span>PL: </span>{posLevel}</span> : null }
+				{stopLoss ? <span><span>SL: </span>{stopLoss}</span> : null }
+				{takeProfit ? <span><span>TP: </span>{takeProfit}</span> : null }
+			</div>
+				
 			{description ?
-				<Box className={classes.content}>
-					<Typography color="textSecondary" variant="body1" component="p">
-						{description}
-					</Typography> 
-				</Box> :
+				<div className={classes.content}>
+						<p>{description}</p>
+				</div> :
 				null
 			}
-		</Box>
+			</AccordionDetails>
+		</Accordion>
 	)
 }
 

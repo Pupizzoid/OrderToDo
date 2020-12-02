@@ -36,7 +36,9 @@ const orders = (state = initialState, { type, payload }) => {
 					...state,
 					dataOrder: [
 						...state.dataOrder.map(order => {
+							console.log(order.id, payload.id);
 							if (order.id === payload.id) {
+								console.log(payload);
 								orderData.update(payload);
 								return payload;
 							}

@@ -20,7 +20,7 @@ let initialState = {
 		wins: false,
 		loses: false,
 	},
-	sort: 'TITLE'
+	sortName: 'TITLE'
 };
 
 const app = (state = initialState, { type, payload }) => {
@@ -64,7 +64,7 @@ const app = (state = initialState, { type, payload }) => {
 		case CHANGE_SORT_ORDERS: 
 			return ({
 				...state,
-				sort: payload
+				sortName: payload
 			})
 		default:
 			return state;

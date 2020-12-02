@@ -4,12 +4,11 @@ import ButtonGroup from '@material-ui/core/ButtonGroup';
 import { makeStyles } from '@material-ui/core/styles';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
-import Box from '@material-ui/core/Box';
 import Icon from '@material-ui/core/Icon';
 import Card from '@material-ui/core/Card';
 import Typography from '@material-ui/core/Typography';
 import CardContent from '@material-ui/core/CardContent';
-import Divider from '@material-ui/core/Divider';
+import { useHistory } from 'react-router-dom';
 import '../Order/Order.scss';
 import Log from '../Log/Log';
 import { connect } from 'react-redux';
@@ -25,29 +24,18 @@ const useStyles = makeStyles({
 	root: {
 		padding: 20,
 		width: 400,
+		position: 'relative',
 		boxShadow: '0 2px 4px -2px rgba(0,0,0,0.24), 0 4px 24px -2px rgba(0, 0, 0, 0.2)',
 	},
-	content: {
-		display: 'flex',
+	logItem: {
+		padding: 0,
+		paddingBottom: '15px',
 		width: '100%',
-		justifyContent: 'space-between'
-	},
-	icon: {
-		color: '#3f51b5;',
-		display: 'block',
-		marginLeft: 'auto'
 	}
 });
 
-const Order = (props) => {
-	const {
-		openForm,
-		deleteActiveOrder,
-		startForm,
-		updateOrder,
-		order
-	} = props;
-
+const Order = ({deleteActiveOrder, startForm, updateOrder, order}) => {
+	const history = useHistory();
 	const classes = useStyles();
 
 	const isNeedsLogging = (logs, key, value, index = logs.length - 1) => {
@@ -57,8 +45,32 @@ const Order = (props) => {
 		return logs[index][key] !== value;
 	}
 
+	const handleCreateLogsForExcelData = (log) => {
+		let result = [];
+		let time = '';
+		let date = '';
+		for (let key in log) {
+			if (!log.hasOwnProperty(key)) {
+				continue;
+			}
+			if (key === 'time') {
+				time = `at ${log[key]}`;
+				continue;
+			}
+			if (key === 'date') {
+				date = `on ${log[key]}`;
+				continue;
+			}
+			console.log(log[key], key);
+			result.push(`${key} was changed to ${log[key]} ${time} ${date}`);
+			console.log(result);
+		}
+		return result;
+	}
+
 	const handleModifyExistingOrder = (formData, formConfig) => {
 		const log = (Object.assign({}, formData));
+		console.log(log, formData);
 		for (let key in log) {
 			if (!formData.hasOwnProperty(key)) {
 				continue;
@@ -67,6 +79,7 @@ const Order = (props) => {
 				delete log[key];
 			}
 		}
+		formData.logsForExcel.push(handleCreateLogsForExcelData(log));
 		formData.logs.push(log);
 		updateOrder(formData);
 	}
@@ -79,7 +92,7 @@ const Order = (props) => {
 				formTitle: 'Modify Pending Order',
 				formSubmitAction: handleModifyExistingOrder
 			});
-		openForm();
+			history.push('/form');
 	}
 
 	const handleModifyActiveOrder = (data) => {
@@ -92,7 +105,7 @@ const Order = (props) => {
 				formTitle: 'Modify Active Order',
 				formSubmitAction: handleModifyExistingOrder
 			});
-		openForm();
+			history.push('/form');
 	}
 
 	const handleActivateOrder = (data) => {
@@ -108,7 +121,7 @@ const Order = (props) => {
 				formTitle: 'Activate Order',
 				formSubmitAction: handleModifyExistingOrder
 			});
-		openForm();
+			history.push('/form');
 	}
 
 	const handleCancelOrder = (data) => {
@@ -123,7 +136,7 @@ const Order = (props) => {
 				formTitle: 'Cancel Order',
 				formSubmitAction: handleModifyExistingOrder
 			});
-		openForm();
+			history.push('/form');
 	}
 
 	const handleCloseOrder = (data) => {
@@ -137,9 +150,9 @@ const Order = (props) => {
 				takeProfit: false,
 				description: false,
 				formTitle: 'Close Order',
-				formSubmitAction: handleModifyExistingOrder
+				formSubmitAction: handleModifyExistingOrder,
 			});
-		openForm();
+			history.push('/form');
 	}
 
 	const getLogValueRecursively = (logs, key, index = logs.length - 1) => {
@@ -170,59 +183,46 @@ const Order = (props) => {
 		const { ...itemProps } = log;
 		return (
 			<Fragment key={index}>
-				<ListItem >
-					<Log {...itemProps} />
+				<ListItem className={classes.logItem}>
+							<Log {...itemProps} />
 				</ListItem>
-				<Divider light />
 			</Fragment>
 		)
 	});
 
 	return (
-		<Card className={classes.root}>
-			<CardContent>
-			<Icon aria-label="cancel" className={classes.icon} onClick={() => deleteActiveOrder()}>cancel</Icon>
-			<Box className={classes.content}>
-				<Typography color="textPrimary" component="h3">
-					{order.title}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					{order.date}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					{order.time}
-				</Typography>
-			</Box>
-			<Box className={classes.content}>
-				<Typography color="textSecondary" variant="body1" component="span">
-					size:{order.posAmount}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					PL:{order.posLevel}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					SL:{order.stopLoss}
-				</Typography>
-				<Typography color="textSecondary" variant="body1" component="span">
-					TP:{order.takeProfit}
-				</Typography>
-			</Box>
-			<List>{logsList}</List>
-			{(order.status === 'pending') ? 
-					<ButtonGroup color="primary" aria-label="outlined secondary button group">
-						<Button onClick={() => handleModifyPendingOrder(order)}>Modify</Button>
-						<Button onClick={() => handleCancelOrder(order)}>Cancel</Button>
-						<Button onClick={() => handleActivateOrder(order)}>Activate</Button>
+		<div className='order-container'>
+			<Card className={classes.root}>
+				<CardContent>
+				<Icon aria-label="cancel" color="secondary" className='icon' onClick={() => deleteActiveOrder()}>cancel</Icon>
+					<div className='order-content'>
+						<span>{order.title}</span>
+						<span>{order.date}</span>
+						<span>{order.time}</span>
+					</div>
+					<div className='order-content'>
+						<span><span>size: </span>{order.posAmount}</span>
+						<span><span>PL: </span>{order.posLevel}</span>
+						<span><span>SL: </span>{order.stopLoss}</span>
+						<span><span>TP: </span>{order.takeProfit}</span>
+				</div>
+				<List>{logsList}</List>
+				{(order.status === 'pending') ? 
+						<ButtonGroup color="primary" aria-label="outlined secondary button group">
+							<Button onClick={() => handleModifyPendingOrder(order)}>Modify</Button>
+							<Button onClick={() => handleCancelOrder(order)}>Cancel</Button>
+							<Button onClick={() => handleActivateOrder(order)}>Activate</Button>
+						</ButtonGroup> :
+					(order.status === 'active') ?
+					<ButtonGroup color="primary" aria-label="contained primary button group">
+						<Button onClick={() => handleModifyActiveOrder(order)}>Modify</Button>
+						<Button onClick={() => handleCloseOrder(order)}>Close</Button>
 					</ButtonGroup> :
-				(order.status === 'active') ?
-				<ButtonGroup color="primary" aria-label="contained primary button group">
-					<Button onClick={() => handleModifyActiveOrder(order)}>Modify</Button>
-					<Button onClick={() => handleCloseOrder(order)}>Close</Button>
-				</ButtonGroup> :
-					null
-			}
-			</CardContent>
-		</Card>
+						null
+				}
+				</CardContent>
+			</Card>
+		</div>
 	)
 }
 

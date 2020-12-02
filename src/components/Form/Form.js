@@ -4,10 +4,16 @@ import Box from '@material-ui/core/Box';
 import ButtonGroup from '@material-ui/core/ButtonGroup';
 import TextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
+import { useHistory } from 'react-router-dom';
 import { makeStyles } from '@material-ui/core/styles';
-import {uid }from '../../data';
+import { uid } from '../../data';
 import { connect } from 'react-redux';
-import { openFormAction, resetFormAction, activateOrderAction} from '../../redux/actions';
+import {
+	openFormAction,
+	resetFormAction,
+	activateOrderAction,
+	updateDepositAction
+} from '../../redux/actions';
 
 const useStyles = makeStyles({
   root: {
@@ -16,6 +22,7 @@ const useStyles = makeStyles({
 		maxWidth: 500,
 		justifyContent: 'space-between',
 		padding: 20,
+		margin: 'auto'
 	},
 	box: {
 		margin: 'auto'
@@ -34,7 +41,7 @@ const useStyles = makeStyles({
 	}
 });
 
-const Form = ({ openForm, formState, resetForm, setActiveOrder }) => {
+const Form = ({ formState, setActiveOrder , updateDeposit, app}) => {
 	const { formData, formConfig} = formState;
 	const [initialData, setData] = useState(
 		Object.assign({}, formData, {
@@ -42,30 +49,34 @@ const Form = ({ openForm, formState, resetForm, setActiveOrder }) => {
 			time: new Date().toString().slice(16, 21),
 		}));
 	const classes = useStyles();
-	console.log(initialData);
+	const history = useHistory();
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
-		if (initialData.status === 'pending') {
+		if (formConfig.typeAction === 'create') {
 			initialData.id = uid();
 		}
 		formConfig.formSubmitAction(initialData, formConfig);
-		openForm();
 		setActiveOrder(initialData.id);
-		resetForm();
+		history.push('/');
 	}
 
 	const handleCloseForm = () => {
-		openForm();
-		resetForm();
+		history.push('/');
 	}
 
 	const handleCloseWithTakeProfit = () => {
-		setData({ ...initialData, status: 'Hit TP', result: +initialData.takeProfit });
+		const resultPoint = Math.abs(parseFloat(initialData.takeProfit) - parseFloat(initialData.posLevel)) * 10000;
+		setData({ ...initialData, status: 'Hit TP', result: resultPoint });
+		const result = resultPoint * initialData.posAmount;
+		updateDeposit(parseFloat(app.depositValue) + result);
 	}
 
 	const handleCloseStopLoss = () => {
-		setData({ ...initialData, status: 'Hit SL', result: +initialData.stopLoss * -1 });
+		const resultPoint = -1 * Math.abs(parseFloat(initialData.stopLoss) - parseFloat(initialData.posLevel)) * 10000;
+		setData({ ...initialData, status: 'Hit SL', result: resultPoint });
+		const result = resultPoint * initialData.posAmount;
+		updateDeposit(parseFloat(app.depositValue) + result);
 	}
 
 	return (
@@ -191,7 +202,6 @@ const Form = ({ openForm, formState, resetForm, setActiveOrder }) => {
 
 const mapStateToProps = state => {
 	return {
-		orders: state.orders,
 		app: state.app,
 		formState: state.form
 	}
@@ -207,6 +217,9 @@ const mapDispatchToProps = (dispatch) => {
 		},
 		setActiveOrder: (id) => {
 			dispatch(activateOrderAction(id));
+		},
+		updateDeposit: (deposit) => {
+			dispatch(updateDepositAction(deposit));
 		}
 	}
 }
